@@ -154,9 +154,17 @@ Supply-chain hardening:
 - CI gates on `npm audit` for production deps, pins GitHub Actions to commit
   SHAs, and runs with least-privilege `contents: read`.
 
+## Image properties
+
+Select an inserted image and a contextual panel appears above the editor to set
+its **per-placement** width, height, alignment (none/left/center/right) and a
+freeform `style` (ADR-004). Alignment uses WordPress-familiar classes
+(`alignleft`/`aligncenter`/`alignright`) shipped in `cms-editor.css`; include
+those styles on the front-end too. Intrinsic data (alt/caption) is edited in the
+picker, not here. The `style` field is filtered by the render-time allowlist.
+
 ## Roadmap
 
-- Image-properties panel UI (the node + command already support it).
 - `cms-editor:prune-orphans` command (Onderhoudsrisico #2).
 - Livewire 3 compat layer.
 - JSON↔HTML render snapshot tests (Onderhoudsrisico #3).
