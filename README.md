@@ -143,10 +143,13 @@ rebuilds and **fails if the committed bundle drifts from the source**.
 Supply-chain hardening:
 
 - `package-lock.json` is committed; CI uses `npm ci` (verifies integrity hashes).
-- `renovate.json` enforces `minimumReleaseAge: "7 days"` — no dependency version
-  younger than a week is adopted (the window in which most malicious releases get
-  caught and yanked). Majors are gated behind the dependency dashboard. Requires
-  enabling the Renovate GitHub app on the repo.
+- **Dependabot** (`.github/dependabot.yml`) updates npm, Composer and GitHub
+  Actions with a **7-day cooldown** (`cooldown.default-days: 7`) — no dependency
+  version younger than a week is adopted (the window in which most malicious
+  releases get caught and yanked). This is native to GitHub; no app to install.
+- A `renovate.json` with the equivalent `minimumReleaseAge: "7 days"` is included
+  as an alternative. Don't run both at once (duplicate PRs) — pick one; enable
+  the Renovate GitHub app only if you disable Dependabot.
 - `.npmrc` `save-exact` stops caret ranges from silently floating.
 - CI gates on `npm audit` for production deps, pins GitHub Actions to commit
   SHAs, and runs with least-privilege `contents: read`.
