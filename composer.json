@@ -1,0 +1,55 @@
+{
+    "name": "degrinthorst/livewire-cms-editor",
+    "description": "A WordPress-classic-style rich text editor for Laravel Livewire, with first-class image insertion and properties, built on TipTap and Spatie MediaLibrary.",
+    "keywords": ["laravel", "livewire", "tiptap", "rich-text-editor", "wysiwyg", "medialibrary", "cms"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Sander de Wijs",
+            "email": "sander@degrinthorst.nl"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/contracts": "^11.0 || ^12.0",
+        "livewire/livewire": "^4.0",
+        "spatie/laravel-medialibrary": "^11.0",
+        "ueberdosis/tiptap-php": "^2.1"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0 || ^10.0",
+        "pestphp/pest": "^3.0",
+        "pestphp/pest-plugin-laravel": "^3.0"
+    },
+    "suggest": {
+        "mews/purifier": "Recommended for hardened HTML sanitization of rendered output (ADR-008)."
+    },
+    "autoload": {
+        "psr-4": {
+            "Degrinthorst\\CmsEditor\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Degrinthorst\\CmsEditor\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Degrinthorst\\CmsEditor\\CmsEditorServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "scripts": {
+        "test": "pest",
+        "test:coverage": "pest --coverage"
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
+}

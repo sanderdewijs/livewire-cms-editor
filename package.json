@@ -1,0 +1,29 @@
+{
+    "name": "@degrinthorst/livewire-cms-editor",
+    "version": "0.1.0",
+    "description": "Front-end (TipTap + Alpine bridge) for the Livewire CMS Editor package.",
+    "license": "MIT",
+    "type": "module",
+    "files": [
+        "dist",
+        "resources/js"
+    ],
+    "main": "dist/cms-editor.js",
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite build --watch"
+    },
+    "dependencies": {
+        "@tiptap/core": "^2.6.0",
+        "@tiptap/starter-kit": "^2.6.0",
+        "@tiptap/extension-image": "^2.6.0",
+        "@tiptap/extension-link": "^2.6.0",
+        "@tiptap/extension-underline": "^2.6.0"
+    },
+    "devDependencies": {
+        "vite": "^5.4.0"
+    },
+    "peerDependencies": {
+        "alpinejs": "^3.14.0"
+    }
+}

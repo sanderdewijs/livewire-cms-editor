@@ -1,0 +1,26 @@
+/* Minimal, unopinionated base styles. Override freely in the host app. */
+.cms-editor { border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+.cms-editor__toolbar { display: flex; flex-wrap: wrap; gap: 2px; padding: 6px; border-bottom: 1px solid #e5e7eb; background: #f9fafb; }
+.cms-editor__btn { padding: 4px 8px; font-size: 13px; border: 1px solid transparent; border-radius: 4px; background: transparent; cursor: pointer; }
+.cms-editor__btn:hover { background: #eef2f7; }
+.cms-editor__btn.is-active { background: #e0e7ff; border-color: #c7d2fe; }
+.cms-editor__sep { width: 1px; align-self: stretch; margin: 4px 4px; background: #e5e7eb; }
+.cms-editor__surface { min-height: 280px; padding: 16px; line-height: 1.6; }
+.cms-editor__surface:focus { outline: none; }
+.cms-editor__surface img { max-width: 100%; height: auto; }
+
+.cms-editor__modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; }
+.cms-editor__modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.45); }
+.cms-editor__modal-body { position: relative; width: min(900px, 92vw); max-height: 86vh; overflow: auto; background: #fff; border-radius: 10px; }
+
+.cms-picker { padding: 16px; }
+.cms-picker__header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.cms-picker__title { font-size: 16px; font-weight: 600; margin: 0; }
+.cms-picker__search { flex: 1; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; }
+.cms-picker__upload { display: inline-flex; gap: 8px; align-items: center; padding: 8px 12px; margin-bottom: 12px; border: 1px dashed #9ca3af; border-radius: 6px; cursor: pointer; }
+.cms-picker__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.cms-picker__item { padding: 0; border: 2px solid transparent; border-radius: 6px; overflow: hidden; cursor: pointer; background: none; }
+.cms-picker__item:hover { border-color: #6366f1; }
+.cms-picker__item img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+.cms-picker__empty { color: #6b7280; grid-column: 1 / -1; padding: 24px; text-align: center; }
+.cms-picker__error { color: #b91c1c; font-size: 13px; }
