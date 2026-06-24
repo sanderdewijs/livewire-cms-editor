@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Least privilege: jobs only need to read the repo.
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, dom, fileinfo, gd, exif
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Run tests
+        run: vendor/bin/pest
+
+  assets:
+    name: Built assets are fresh & audited
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20'
+
+      # `npm ci` installs exactly the committed lockfile and verifies every
+      # package's integrity hash — a tampered tarball fails here.
+      - name: Install dependencies
+        run: npm ci
+
+      # Gate on advisories in shipped (production) deps. Dev-only build tooling
+      # (vite/esbuild) is audited separately and non-blocking below.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Audit all dependencies (informational)
+        run: npm audit || true
+
+      - name: Build
+        run: npm run build
+
+      # The committed dist/ must match a fresh build, so a stale/forgotten
+      # bundle can never reach Packagist.
+      - name: Fail if dist/ is out of date
+        run: |
+          if ! git diff --quiet -- dist/; then
+            echo "::error::dist/ is out of date — run 'npm run build' and commit the result."
+            git --no-pager diff --stat -- dist/
+            exit 1
+          fi
