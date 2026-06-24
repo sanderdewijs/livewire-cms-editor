@@ -10,6 +10,12 @@ it('renders the editor component with its toolbar', function () {
         ->assertSee('cms-editor', false);
 });
 
+it('renders the image-properties panel markup', function () {
+    Livewire::test(Editor::class, ['model' => null])
+        ->assertSeeHtml('cms-editor__imagebar')
+        ->assertSeeHtml('image.active');
+});
+
 it('opens and closes the media picker', function () {
     Livewire::test(Editor::class, ['model' => null])
         ->assertSet('showPicker', false)

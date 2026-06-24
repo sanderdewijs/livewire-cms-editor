@@ -15425,12 +15425,20 @@ function cv(e = {}) {
 	return {
 		editor: null,
 		_debounce: null,
+		image: {
+			active: !1,
+			width: "",
+			height: "",
+			align: "none",
+			style: ""
+		},
 		init() {
 			this.editor = new Md({
 				element: this.$refs.editor,
 				extensions: [ov.configure({ link: { openOnClick: !1 } }), sv],
 				content: this.initialContent(),
-				onUpdate: ({ editor: e }) => this.pushToLivewire(e)
+				onUpdate: ({ editor: e }) => this.pushToLivewire(e),
+				onSelectionUpdate: () => this.syncImagePanel()
 			}), this.$refs.editor.addEventListener("cms-editor:open-picker", () => {
 				this.$wire.openPicker();
 			}), this.$wire.on("cms-editor:insert-image", ({ media: e }) => {
@@ -15482,6 +15490,31 @@ function cv(e = {}) {
 		promptLink(e) {
 			let t = window.prompt("Link URL");
 			return t === null ? e : t === "" ? e.unsetLink() : e.setLink({ href: t });
+		},
+		_alignClasses: {
+			left: "alignleft",
+			center: "aligncenter",
+			right: "alignright"
+		},
+		syncImagePanel() {
+			let e = this.editor.isActive("mediaImage");
+			if (this.image.active = e, !e) return;
+			let t = this.editor.getAttributes("mediaImage");
+			this.image.width = t.width ?? "", this.image.height = t.height ?? "", this.image.style = t.style ?? "", this.image.align = this.alignFromClass(t.class);
+		},
+		alignFromClass(e) {
+			for (let [t, n] of Object.entries(this._alignClasses)) if ((e ?? "").split(/\s+/).includes(n)) return t;
+			return "none";
+		},
+		setImageSize(e, t) {
+			let n = t === "" || t === null ? null : Number(t);
+			this.updateSelectedImage({ [e]: Number.isFinite(n) ? n : null });
+		},
+		setImageAlign(e) {
+			this.image.align = e, this.updateSelectedImage({ class: this._alignClasses[e] ?? null });
+		},
+		setImageStyle(e) {
+			this.updateSelectedImage({ style: e?.trim() ? e.trim() : null });
 		},
 		updateSelectedImage(e) {
 			this.editor.chain().focus().updateMediaImage(e).run();

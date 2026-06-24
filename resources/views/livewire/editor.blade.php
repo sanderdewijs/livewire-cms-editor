@@ -22,6 +22,47 @@
     </div>
 
     {{--
+        Image-properties panel (ADR-004). Shows only while a mediaImage node is
+        selected; edits the node's per-placement presentation attrs (width,
+        height, alignment, custom style) — intrinsic data (alt/caption) is edited
+        in the picker. Lives outside wire:ignore; Alpine drives its visibility.
+    --}}
+    <div class="cms-editor__imagebar" role="toolbar" x-show="image.active" x-cloak>
+        <span class="cms-editor__imagebar-label">Afbeelding</span>
+
+        <label class="cms-editor__field" title="Breedte (px)">
+            B
+            <input type="number" min="0" inputmode="numeric"
+                   x-model.number="image.width"
+                   @change="setImageSize('width', image.width)" />
+        </label>
+        <label class="cms-editor__field" title="Hoogte (px)">
+            H
+            <input type="number" min="0" inputmode="numeric"
+                   x-model.number="image.height"
+                   @change="setImageSize('height', image.height)" />
+        </label>
+
+        <span class="cms-editor__sep" aria-hidden="true"></span>
+
+        @foreach (['none' => 'Geen', 'left' => 'Links', 'center' => 'Midden', 'right' => 'Rechts'] as $align => $label)
+            <button type="button" class="cms-editor__btn"
+                    :class="{ 'is-active': image.align === @js($align) }"
+                    @click="setImageAlign(@js($align))"
+                    title="Uitlijnen: {{ $label }}">{{ $label }}</button>
+        @endforeach
+
+        <span class="cms-editor__sep" aria-hidden="true"></span>
+
+        <label class="cms-editor__field cms-editor__field--grow" title="Eigen CSS (gesaniteerd bij weergave)">
+            style
+            <input type="text" placeholder="bijv. border-radius: 8px"
+                   x-model="image.style"
+                   @change="setImageStyle(image.style)" />
+        </label>
+    </div>
+
+    {{--
         The editor surface. wire:ignore keeps Livewire's morph away from the
         contenteditable DOM that TipTap manages (ADR-006). x-ref is how the
         Alpine component grabs the mount element.

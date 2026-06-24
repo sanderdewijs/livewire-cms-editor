@@ -16,6 +16,10 @@ export default function cmsEditor(config = {}) {
         editor: null,
         _debounce: null,
 
+        // Image-properties panel state (ADR-004). Mirrors the attrs of the
+        // currently-selected mediaImage node; `active` toggles the panel.
+        image: { active: false, width: '', height: '', align: 'none', style: '' },
+
         init() {
             this.editor = new Editor({
                 element: this.$refs.editor,
@@ -30,6 +34,7 @@ export default function cmsEditor(config = {}) {
                 ],
                 content: this.initialContent(),
                 onUpdate: ({ editor }) => this.pushToLivewire(editor),
+                onSelectionUpdate: () => this.syncImagePanel(),
             })
 
             // Open the server-side media picker.
@@ -106,9 +111,50 @@ export default function cmsEditor(config = {}) {
             return chain.setLink({ href: url })
         },
 
+        // --- Image-properties panel (ADR-004) ---
+
+        // WordPress-familiar alignment classes, mapped to the node `class` attr.
+        _alignClasses: { left: 'alignleft', center: 'aligncenter', right: 'alignright' },
+
+        /**
+         * Refresh the panel from the selected node. Runs on selection change
+         * only (not on attr updates), so typing in a field is never clobbered.
+         */
+        syncImagePanel() {
+            const active = this.editor.isActive('mediaImage')
+            this.image.active = active
+            if (! active) return
+
+            const attrs = this.editor.getAttributes('mediaImage')
+            this.image.width = attrs.width ?? ''
+            this.image.height = attrs.height ?? ''
+            this.image.style = attrs.style ?? ''
+            this.image.align = this.alignFromClass(attrs.class)
+        },
+
+        alignFromClass(cls) {
+            for (const [align, name] of Object.entries(this._alignClasses)) {
+                if ((cls ?? '').split(/\s+/).includes(name)) return align
+            }
+            return 'none'
+        },
+
+        setImageSize(key, value) {
+            const n = value === '' || value === null ? null : Number(value)
+            this.updateSelectedImage({ [key]: Number.isFinite(n) ? n : null })
+        },
+
+        setImageAlign(align) {
+            this.image.align = align
+            this.updateSelectedImage({ class: this._alignClasses[align] ?? null })
+        },
+
+        setImageStyle(value) {
+            this.updateSelectedImage({ style: value?.trim() ? value.trim() : null })
+        },
+
         /**
          * Update the currently-selected image's presentation attrs (ADR-004).
-         * Wire this to your "image properties" panel.
          */
         updateSelectedImage(attrs) {
             this.editor.chain().focus().updateMediaImage(attrs).run()

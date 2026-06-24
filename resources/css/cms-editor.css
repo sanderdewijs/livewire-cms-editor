@@ -9,6 +9,20 @@
 .cms-editor__surface:focus { outline: none; }
 .cms-editor__surface img { max-width: 100%; height: auto; }
 
+/* Image-properties panel (ADR-004) */
+[x-cloak] { display: none !important; }
+.cms-editor__imagebar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid #e5e7eb; background: #eef2ff; font-size: 13px; }
+.cms-editor__imagebar-label { font-weight: 600; color: #4338ca; margin-right: 4px; }
+.cms-editor__field { display: inline-flex; align-items: center; gap: 4px; color: #374151; }
+.cms-editor__field input { width: 72px; padding: 3px 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; }
+.cms-editor__field--grow { flex: 1; min-width: 160px; }
+.cms-editor__field--grow input { width: 100%; }
+
+/* Alignment classes — applied to inserted images, usable on the front-end too */
+.alignleft { float: left; margin: 0 16px 12px 0; }
+.alignright { float: right; margin: 0 0 12px 16px; }
+.aligncenter { display: block; margin-left: auto; margin-right: auto; }
+
 .cms-editor__modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; }
 .cms-editor__modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.45); }
 .cms-editor__modal-body { position: relative; width: min(900px, 92vw); max-height: 86vh; overflow: auto; background: #fff; border-radius: 10px; }

@@ -66,6 +66,31 @@ it('re-resolves a media image src from its mediaId at render time', function () 
         ->not->toContain('stale.example');
 });
 
+it('renders per-placement presentation attrs and sanitizes the style', function () {
+    Storage::fake('public');
+
+    $article = Article::create(['title' => 'Test']);
+    $media = $article
+        ->addMedia(UploadedFile::fake()->image('photo.jpg'))
+        ->toMediaCollection('article_body');
+
+    // The image-properties panel writes class/style/width as node attrs.
+    $html = app(ContentRenderer::class)->toHtml(doc([
+        ['type' => 'mediaImage', 'attrs' => [
+            'mediaId' => $media->id,
+            'class' => 'aligncenter',
+            'style' => 'border-radius: 8px; position: absolute',
+            'width' => 240,
+        ]],
+    ]));
+
+    expect($html)
+        ->toContain('class="aligncenter"')
+        ->toContain('width="240"')
+        ->toContain('border-radius: 8px')   // allowlisted style kept
+        ->not->toContain('position');        // disallowed style stripped
+});
+
 it('blanks the src when the backing media record is gone', function () {
     $html = app(ContentRenderer::class)->toHtml(doc([
         ['type' => 'mediaImage', 'attrs' => [
