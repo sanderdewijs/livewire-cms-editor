@@ -1,0 +1,35 @@
+version: 2
+
+updates:
+  # Front-end (TipTap / Vite) dependencies.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    # Don't adopt a release younger than a week (supply-chain cooldown).
+    cooldown:
+      default-days: 7
+    groups:
+      tiptap:
+        patterns:
+          - "@tiptap/*"
+      dev-tooling:
+        dependency-type: development
+
+  # PHP dependencies.
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+
+  # GitHub Actions — keeps the SHA pins in ci.yml current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
