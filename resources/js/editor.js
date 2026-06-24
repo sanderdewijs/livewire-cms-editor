@@ -1,7 +1,5 @@
 import { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
-import Link from '@tiptap/extension-link'
-import Underline from '@tiptap/extension-underline'
 import { MediaImage } from './extensions/MediaImage.js'
 
 /**
@@ -22,9 +20,12 @@ export default function cmsEditor(config = {}) {
             this.editor = new Editor({
                 element: this.$refs.editor,
                 extensions: [
-                    StarterKit,
-                    Underline,
-                    Link.configure({ openOnClick: false }),
+                    // StarterKit v3 bundles Link and Underline (both on by
+                    // default); configure Link here instead of registering it
+                    // separately, which would duplicate the extension.
+                    StarterKit.configure({
+                        link: { openOnClick: false },
+                    }),
                     MediaImage,
                 ],
                 content: this.initialContent(),
