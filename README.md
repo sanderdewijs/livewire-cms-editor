@@ -133,6 +133,24 @@ $this->app->bind(
 );
 ```
 
+## Distribution & maintenance
+
+The pre-built `dist/cms-editor.js` is committed to the repo so `composer require`
+works without a Node toolchain (Packagist serves the git-tag archive). Keep it
+fresh: run `npm run build` and commit the result before tagging a release — CI
+rebuilds and **fails if the committed bundle drifts from the source**.
+
+Supply-chain hardening:
+
+- `package-lock.json` is committed; CI uses `npm ci` (verifies integrity hashes).
+- `renovate.json` enforces `minimumReleaseAge: "7 days"` — no dependency version
+  younger than a week is adopted (the window in which most malicious releases get
+  caught and yanked). Majors are gated behind the dependency dashboard. Requires
+  enabling the Renovate GitHub app on the repo.
+- `.npmrc` `save-exact` stops caret ranges from silently floating.
+- CI gates on `npm audit` for production deps, pins GitHub Actions to commit
+  SHAs, and runs with least-privilege `contents: read`.
+
 ## Roadmap
 
 - Image-properties panel UI (the node + command already support it).
