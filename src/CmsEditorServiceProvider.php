@@ -2,6 +2,7 @@
 
 namespace Degrinthorst\CmsEditor;
 
+use Degrinthorst\CmsEditor\Console\InstallCommand;
 use Degrinthorst\CmsEditor\Livewire\Editor;
 use Degrinthorst\CmsEditor\Livewire\MediaPicker;
 use Illuminate\Support\ServiceProvider;
@@ -29,6 +30,10 @@ class CmsEditorServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->registerPublishing();
+
+            $this->commands([
+                InstallCommand::class,
+            ]);
         }
     }
 

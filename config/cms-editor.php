@@ -55,6 +55,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Content columns (ADR-003)
+    |--------------------------------------------------------------------------
+    |
+    | The package never owns your article table — these tell the optional
+    | SyncsEditorHtml trait which columns to read from and write to:
+    |
+    |   - 'json' : the column holding the ProseMirror JSON document (cast to
+    |              array on your model). This is the source of truth.
+    |   - 'html' : an OPTIONAL column that caches the rendered HTML. null =
+    |              disabled (render on the fly via ContentRenderer instead).
+    |              When set, add the SyncsEditorHtml trait to your model and it
+    |              re-renders this column from the JSON on every save.
+    |
+    | `php artisan cms-editor:install` scaffolds a migration for these.
+    |
+    */
+    'columns' => [
+        'json' => env('CMS_EDITOR_JSON_COLUMN', 'body'),
+        'html' => env('CMS_EDITOR_HTML_COLUMN'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Media picker
     |--------------------------------------------------------------------------
     */

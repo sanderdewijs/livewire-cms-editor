@@ -54,6 +54,7 @@ class TestCase extends Orchestra
             $table->id();
             $table->string('title')->nullable();
             $table->json('body')->nullable();
+            $table->longText('body_html')->nullable();
             $table->timestamps();
         });
     }

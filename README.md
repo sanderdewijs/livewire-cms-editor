@@ -27,9 +27,39 @@ MediaLibrary record, so it's reusable across articles via a built-in picker.
 
 ```bash
 composer require degrinthorst/livewire-cms-editor
+php artisan cms-editor:install
+```
+
+The `cms-editor:install` command publishes the config, optionally publishes the
+pre-built assets, asks which **model** and **column(s)** hold the content, writes
+those choices to your `.env`, and scaffolds a migration for the column(s). It
+never edits your model — it prints the trait/interface/cast you add yourself.
+
+Prefer to do it by hand? The manual equivalents are:
+
+```bash
 php artisan vendor:publish --tag=cms-editor-config
 php artisan vendor:publish --tag=cms-editor-assets   # pre-built JS into public/vendor/cms-editor
 ```
+
+### Columns: JSON vs cached HTML (ADR-003)
+
+The package is **column-agnostic for the JSON** — the editor pushes ProseMirror
+JSON through `wire:model` and your form persists it to your own column. The only
+package-managed column is the *optional* rendered-HTML cache:
+
+```php
+// config/cms-editor.php  (driven by .env)
+'columns' => [
+    'json' => env('CMS_EDITOR_JSON_COLUMN', 'body'),   // source of truth, cast to array
+    'html' => env('CMS_EDITOR_HTML_COLUMN'),            // null = render on the fly
+],
+```
+
+When `columns.html` is set, add the `SyncsEditorHtml` trait to your model and the
+HTML column is re-rendered from the JSON on every save (image src is re-resolved
+from MediaLibrary at that moment — a renamed/replaced image refreshes on the
+next save).
 
 Front-end — either use the pre-built bundle, or import the source in your `app.js`:
 
@@ -61,7 +91,11 @@ class Article extends Model implements HasEditorMedia
 }
 ```
 
-Set `article_model` in `config/cms-editor.php`.
+Want the cached-HTML column? Also `use Degrinthorst\CmsEditor\Concerns\SyncsEditorHtml;`
+and set `CMS_EDITOR_HTML_COLUMN` (the install command does both for you).
+
+Set `article_model` in `config/cms-editor.php` (or `CMS_EDITOR_ARTICLE_MODEL` in
+`.env`).
 
 ## Use it
 
