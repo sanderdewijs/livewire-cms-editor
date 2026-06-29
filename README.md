@@ -61,7 +61,22 @@ HTML column is re-rendered from the JSON on every save (image src is re-resolved
 from MediaLibrary at that moment — a renamed/replaced image refreshes on the
 next save).
 
-Front-end — either use the pre-built bundle, or import the source in your `app.js`:
+Front-end — either load the pre-built bundle, or import the source in your `app.js`.
+
+**Pre-built bundle.** `dist/cms-editor.js` is an **ES module**, so it must be
+loaded with `type="module"` (a plain `<script>` throws on its `export` and the
+editor never registers). It self-registers on `window.Alpine` / `alpine:init`:
+
+```blade
+{{-- in your layout <head> --}}
+<link rel="stylesheet" href="{{ asset('vendor/cms-editor/cms-editor.css') }}">
+<script type="module" src="{{ asset('vendor/cms-editor/cms-editor.js') }}"></script>
+```
+
+(`vendor:publish --tag=cms-editor-assets` copies both the JS and CSS into
+`public/vendor/cms-editor`.)
+
+**Or import the source** in your bundled `app.js`:
 
 ```js
 import { registerCmsEditor } from '@degrinthorst/livewire-cms-editor'
@@ -73,6 +88,7 @@ Include the base styles (optional): `resources/css/cms-editor.css`.
 ## Prepare your model
 
 ```php
+use Degrinthorst\CmsEditor\Concerns\AdoptsEditorMedia;
 use Degrinthorst\CmsEditor\Concerns\InteractsWithEditorMedia;
 use Degrinthorst\CmsEditor\Contracts\HasEditorMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -81,6 +97,7 @@ class Article extends Model implements HasEditorMedia
 {
     use InteractsWithMedia;
     use InteractsWithEditorMedia;
+    use AdoptsEditorMedia; // claims inserted images on save (recommended)
 
     public function registerMediaCollections(): void
     {
@@ -90,6 +107,10 @@ class Article extends Model implements HasEditorMedia
     protected $casts = ['body' => 'array']; // ProseMirror JSON (ADR-003)
 }
 ```
+
+`AdoptsEditorMedia` makes the model own the images it references on save (so they
+cascade-delete with it). It's optional — without it, images stay on the shared
+upload bucket (ADR-009). Skip it only if you use `upload_binding=model`.
 
 Want the cached-HTML column? Also `use Degrinthorst\CmsEditor\Concerns\SyncsEditorHtml;`
 and set `CMS_EDITOR_HTML_COLUMN` (the install command does both for you).
@@ -101,8 +122,13 @@ Set `article_model` in `config/cms-editor.php` (or `CMS_EDITOR_ARTICLE_MODEL` in
 
 ```blade
 {{-- inside a Livewire form component with a public array $body --}}
-<x-cms-editor wire:model="body" :model="$article" />
+<x-cms-editor wire:model="body" :model="$article ?? null" />
 ```
+
+The same tag works for **create and edit**: pass the model when you have one,
+`null` when you don't. Uploads on a new article attach to the package upload
+bucket and are adopted onto the article on save (ADR-009) — no draft record
+needed.
 
 Render the stored document to HTML on the front-end:
 
@@ -163,9 +189,21 @@ freeform `style` (ADR-004). Alignment uses WordPress-familiar classes
 those styles on the front-end too. Intrinsic data (alt/caption) is edited in the
 picker, not here. The `style` field is filtered by the render-time allowlist.
 
+## Pruning unused images
+
+Editor images that no document references any more — un-inserted bucket uploads
+and de-referenced host media — are cleaned up by:
+
+```bash
+php artisan cms-editor:prune-orphans --dry-run     # preview
+php artisan cms-editor:prune-orphans --ttl=7 --force  # delete, sparing bucket uploads < 7 days
+```
+
+Schedule it (e.g. daily with `--ttl=7 --force`). It scans the configured model's
+JSON column for live `mediaId`s; configure extra sources via `prune.sources`.
+
 ## Roadmap
 
-- `cms-editor:prune-orphans` command (Onderhoudsrisico #2).
 - Livewire 3 compat layer.
 - JSON↔HTML render snapshot tests (Onderhoudsrisico #3).
 

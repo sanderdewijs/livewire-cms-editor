@@ -172,15 +172,11 @@ Media::query()
     ->paginate(config('cms-editor.picker_per_page', 24));
 ```
 
-**Nieuwe artikelen.** Drie ondersteunde strategieën (config
-`upload_binding`):
-
-1. `draft` (default) — bij eerste upload maakt de host een draft-record (of de
-   editor krijgt een al-bestaand model mee). Veiligst en voorspelbaarst.
-2. `temporary` — upload als losgekoppelde Media in de collection; bij save van
-   het artikel koppelen we de gebruikte Media aan het model.
-3. `model` — host geeft altijd een bestaand model mee (formulier werkt met een
-   reeds-gepersisteerd record).
+**Nieuwe artikelen.** De oorspronkelijke drie strategieën (`draft`/`temporary`/
+`model`) bleken niet werkbaar: `draft`/`model` gooien zonder model een
+`RuntimeException`, en `temporary` (`new Article()->save()`) faalt op NOT-NULL
+kolommen en herkoppelt de Media nooit. **Vervangen door ADR-009** (upload-bucket
++ adoptie). De picker-query hierboven is verbreed naar de bucket; zie ADR-009.
 
 **Consequenties.**
 
@@ -296,6 +292,45 @@ class Article extends Model implements HasMedia, HasEditorMedia
 
 ---
 
+## ADR-009 — Upload-bucket + adoptie (vervangt `upload_binding` trichotomie)
+
+**Context.** Het kernprobleem van ADR-005: bij een nieuw artikel is er geen
+gepersisteerd model om uploads aan te koppelen. De drie oude strategieën waren
+allemaal onbruikbaar (zie ADR-005).
+
+**Sleutelinzicht.** Afbeeldingen worden *overal* op hun globale `mediaId`
+opgelost — `ContentRenderer::reresolveImages()` doet `Media::find($mediaId)`
+(geen owner-scope) en de picker filtert op `model_type` + `collection_name` (een
+gedeelde pool, nooit één instance). Het host-artikel hoeft de Media-rij dus
+**niet** te bezitten om de editor te laten werken.
+
+**Keuze.**
+
+1. **Upload-bucket** (`Degrinthorst\CmsEditor\Models\EditorUpload`, eigen tabel
+   `cms_editor_uploads`) is een altijd-aanwezige MediaLibrary-owner. Verse
+   uploads landen hier, dus create en edit zijn identiek
+   (`<x-cms-editor :model="$article ?? null" />`). De picker gooit nooit meer.
+2. **Scope** = per gebruiker (default): niet-geadopteerde uploads blijven privé
+   tot adoptie. `singleton` of een callable kan ook (config `upload_bucket`).
+3. **Adoptie** via de opt-in trait `AdoptsEditorMedia`: op `saved` herkoppelt de
+   host de in het document genoemde bucket-Media **in-place**
+   (`$media->model()->associate($host); $media->save();`). Bewust **geen**
+   `Media::move()` — die doet copy + force-delete en mint een nieuw id, wat alle
+   opgeslagen `mediaId`-referenties zou breken. Guard op `model_type = bucket`
+   zodat een resave nooit andermans Media inpikt.
+4. **`model`-binding** blijft als override: altijd direct aan het meegegeven
+   instance koppelen, geen bucket, geen adoptie.
+
+**Consequenties.**
+
+- Eén werkende route voor create én edit; geen draft-records, geen NOT-NULL-val.
+- Geadopteerde Media wordt host-eigendom (cascade-delete). Niet-gebruikte
+  bucket-uploads ruimt `cms-editor:prune-orphans` op (Onderhoudsrisico #2).
+- Eén extra package-tabel (`cms_editor_uploads`), gepubliceerd via
+  `--tag=cms-editor-migrations`.
+
+---
+
 ## Onderhoudsrisico's (dingen om in de gaten te houden)
 
 1. **ProseMirror/TipTap major upgrades.** Custom nodes en het schema kunnen
@@ -303,10 +338,11 @@ class Article extends Model implements HasMedia, HasEditorMedia
    `resources/js/extensions/`, en pinnen op een minor-range met expliciete
    upgrade-tests.
 
-2. **Orphan-Media.** Met `upload_binding=temporary` ontstaan geüploade maar
-   nooit-gebruikte afbeeldingen. We hebben een opruim-commando nodig
-   (`cms-editor:prune-orphans`) dat Media in de collection vergelijkt met de
-   `mediaId`'s die daadwerkelijk in opgeslagen documenten voorkomen.
+2. **Orphan-Media.** *Opgelost (ADR-009).* Niet-gebruikte bucket-uploads en
+   ge-de-refereerde host-Media worden opgeruimd door `cms-editor:prune-orphans`,
+   dat Media in de collection vergelijkt met de `mediaId`'s die daadwerkelijk in
+   opgeslagen documenten voorkomen. Bucket-uploads krijgen een TTL-respijt
+   (`prune.bucket_ttl_days` / `--ttl`) zodat lopende edits niet worden geraakt.
 
 3. **JSON ↔ HTML render-drift.** De client (TipTap JS) en server (tiptap-php)
    moeten dezelfde HTML produceren, anders krijg je verspringende preview vs.
