@@ -316,8 +316,15 @@ gedeelde pool, nooit één instance). Het host-artikel hoeft de Media-rij dus
    host de in het document genoemde bucket-Media **in-place**
    (`$media->model()->associate($host); $media->save();`). Bewust **geen**
    `Media::move()` — die doet copy + force-delete en mint een nieuw id, wat alle
-   opgeslagen `mediaId`-referenties zou breken. Guard op `model_type = bucket`
-   zodat een resave nooit andermans Media inpikt.
+   opgeslagen `mediaId`-referenties zou breken. De adoptie-query is gescoped op
+   `model_type = bucket` **én** `model_id = currentKey()` (de bucket van de
+   opslaande gebruiker): een client bepaalt de `mediaId`'s in het document, maar
+   nooit in wiens bucket die liggen, dus een vervalst document kan andermans
+   *pending* upload niet inpikken (IDOR-guard). Eenmaal geadopteerde Media is
+   host-eigendom en hoort bewust tot de gedeelde bibliotheek (WordPress-stijl:
+   zichtbaar/herbruikbaar voor iedereen). `MediaPicker::select()` hanteert
+   dezelfde zichtbaarheids-query als de grid, zodat je nooit Media kunt kiezen
+   die je niet kon zien.
 4. **`model`-binding** blijft als override: altijd direct aan het meegegeven
    instance koppelen, geen bucket, geen adoptie.
 

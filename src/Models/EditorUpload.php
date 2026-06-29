@@ -73,7 +73,11 @@ class EditorUpload extends Model implements HasEditorMedia
 
         return match ($scope) {
             'singleton' => 'singleton',
-            default => ($id = auth()->id()) !== null ? (string) $id : 'guest',
+            // Per authenticated user; fall back to a per-session bucket so two
+            // unauthenticated browsers never share (and leak) pending uploads.
+            default => ($id = auth()->id()) !== null
+                ? (string) $id
+                : 'guest:' . session()->getId(),
         };
     }
 }

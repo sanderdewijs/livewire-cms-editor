@@ -38,13 +38,23 @@ trait AdoptsEditorMedia
                 return;
             }
 
+            // Only ever adopt from the SAVER'S OWN bucket. Scoping to the current
+            // scope's bucket id (not just model_type=bucket) stops a crafted
+            // document from re-parenting another user's pending uploads onto this
+            // host — a client controls the mediaIds, but not whose bucket they
+            // live in. No bucket for this scope (e.g. an unauthenticated/queued
+            // save) => nothing of ours to adopt.
+            $bucketId = $bucketModel::currentKey();
+
+            if (! $bucketId) {
+                return;
+            }
+
             Media::query()
                 ->whereIn('id', $ids)
                 ->where('collection_name', config('cms-editor.collection', 'article_body'))
-                // Only adopt media that still belongs to the bucket — never steal
-                // images already owned by another host (cross-article id reuse is
-                // intentional; the first saver claims ownership).
                 ->where('model_type', (new $bucketModel)->getMorphClass())
+                ->where('model_id', $bucketId)
                 ->get()
                 ->each(function (Media $media) use ($model): void {
                     // Re-point the morph IN PLACE. Do NOT use Media::move(): it

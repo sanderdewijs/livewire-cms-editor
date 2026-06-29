@@ -57,6 +57,32 @@ it('does not steal media already owned by another article', function () {
     expect($media->model_type)->toBe(Article::class);
 });
 
+it('does not adopt media from another user\'s bucket', function () {
+    Storage::fake('public');
+
+    // Upload into user A's private bucket.
+    config()->set('cms-editor.upload_bucket.scope', fn () => 'user-A');
+    $bucketA = EditorUpload::current();
+    $media = $bucketA->addMedia(UploadedFile::fake()->image('a.jpg'))
+        ->toMediaCollection('article_body');
+
+    $document = [
+        'type' => 'doc',
+        'content' => [[
+            'type' => 'mediaImage',
+            'attrs' => ['mediaId' => $media->id],
+        ]],
+    ];
+
+    // User B saves an article that references A's media id — must NOT steal it.
+    config()->set('cms-editor.upload_bucket.scope', fn () => 'user-B');
+    Article::create(['title' => 'B', 'body' => $document]);
+
+    $media->refresh();
+    expect($media->model_type)->toBe(EditorUpload::class);
+    expect($media->model_id)->toBe($bucketA->id);
+});
+
 it('leaves un-referenced bucket media on the bucket', function () {
     Storage::fake('public');
 
