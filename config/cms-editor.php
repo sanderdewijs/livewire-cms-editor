@@ -22,25 +22,67 @@ return [
     | MediaLibrary collection (ADR-005)
     |--------------------------------------------------------------------------
     |
-    | Images inserted through the editor live in this collection on the article
-    | model. The media picker is restrained to this collection so the rest of
-    | the media library never shows up.
+    | Images inserted through the editor live in this collection. The media
+    | picker is restrained to this collection so the rest of the media library
+    | never shows up.
     |
     */
     'collection' => 'article_body',
 
     /*
     |--------------------------------------------------------------------------
-    | Upload binding strategy (ADR-005)
+    | Upload binding strategy (ADR-009)
     |--------------------------------------------------------------------------
     |
-    | How freshly-uploaded images are associated with the article model:
-    |   - 'draft'     : host provides/creates a persisted (draft) record first
-    |   - 'temporary' : upload unattached, link on article save
-    |   - 'model'     : a persisted model is always supplied to the editor
+    | How freshly-uploaded images are owned before the host article is saved:
+    |   - 'bucket' (default) : attach to the package upload bucket; the optional
+    |                          AdoptsEditorMedia trait re-parents them onto the
+    |                          host on save. Works identically for new + existing
+    |                          articles — no draft record required.
+    |   - 'model'            : always attach directly to the supplied :model
+    |                          instance (host must pass a persisted model; no
+    |                          bucket, no adoption).
+    |
+    | Any other value is treated as 'bucket'.
     |
     */
-    'upload_binding' => 'draft',
+    'upload_binding' => env('CMS_EDITOR_UPLOAD_BINDING', 'bucket'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Upload bucket (ADR-009)
+    |--------------------------------------------------------------------------
+    |
+    | The package-owned model that owns not-yet-adopted uploads, and how its
+    | rows are scoped:
+    |   - 'user' (default) : one bucket per authenticated user; pending uploads
+    |                        stay private to the uploader until adopted.
+    |   - 'singleton'      : one shared bucket for everyone.
+    |   - callable(): ?string : compute your own scope (e.g. per tenant).
+    |
+    */
+    'upload_bucket' => [
+        'model' => \Degrinthorst\CmsEditor\Models\EditorUpload::class,
+        'scope' => env('CMS_EDITOR_UPLOAD_BUCKET_SCOPE', 'user'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Orphan pruning (ADR-009)
+    |--------------------------------------------------------------------------
+    |
+    | `cms-editor:prune-orphans` deletes editor media no document references.
+    |   - 'sources'         : [model, json-column] pairs to scan for live
+    |                         references. Empty => the configured article model
+    |                         + json column.
+    |   - 'bucket_ttl_days' : grace window before un-inserted bucket uploads are
+    |                         pruned (null = never prune bucket uploads by age).
+    |
+    */
+    'prune' => [
+        'sources' => [],
+        'bucket_ttl_days' => null,
+    ],
 
     /*
     |--------------------------------------------------------------------------

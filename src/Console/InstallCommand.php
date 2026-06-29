@@ -24,6 +24,9 @@ class InstallCommand extends Command
             $this->call('vendor:publish', ['--tag' => 'cms-editor-assets']);
         }
 
+        // 2b. Upload-bucket table (ADR-009) — required for the default binding.
+        $this->call('vendor:publish', ['--tag' => 'cms-editor-migrations']);
+
         // 3. Which model holds the content. Stored without a leading slash so it
         // matches MediaLibrary's morph `model_type` (ADR-005).
         $model = ltrim($this->ask('Which Eloquent model holds the editable content?', 'App\\Models\\Article'), '\\');
@@ -127,8 +130,11 @@ class InstallCommand extends Command
         $short = class_basename($model);
 
         $traits = ['use Spatie\\MediaLibrary\\InteractsWithMedia;',
-                   'use Degrinthorst\\CmsEditor\\Concerns\\InteractsWithEditorMedia;'];
-        $uses = ['    use InteractsWithMedia;', '    use InteractsWithEditorMedia;'];
+                   'use Degrinthorst\\CmsEditor\\Concerns\\InteractsWithEditorMedia;',
+                   'use Degrinthorst\\CmsEditor\\Concerns\\AdoptsEditorMedia;'];
+        $uses = ['    use InteractsWithMedia;',
+                 '    use InteractsWithEditorMedia;',
+                 '    use AdoptsEditorMedia; // claims inserted images on save (recommended)'];
 
         if ($htmlColumn) {
             $traits[] = 'use Degrinthorst\\CmsEditor\\Concerns\\SyncsEditorHtml;';

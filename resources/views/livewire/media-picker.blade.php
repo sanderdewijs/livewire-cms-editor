@@ -21,7 +21,7 @@
     </label>
     @error('upload') <p class="cms-picker__error">{{ $message }}</p> @enderror
 
-    {{-- Grid: only media on the configured model + collection --}}
+    {{-- Grid: the shared editor library plus your own pending uploads --}}
     <div class="cms-picker__grid">
         @forelse ($this->media as $item)
             <button
@@ -33,7 +33,7 @@
                 <img src="{{ $item->getUrl() }}" alt="{{ $item->getCustomProperty('alt', $item->name) }}" loading="lazy" />
             </button>
         @empty
-            <p class="cms-picker__empty">Nog geen afbeeldingen in dit artikel.</p>
+            <p class="cms-picker__empty">Nog geen afbeeldingen.</p>
         @endforelse
     </div>
 

@@ -57,5 +57,12 @@ class TestCase extends Orchestra
             $table->longText('body_html')->nullable();
             $table->timestamps();
         });
+
+        // The package-owned upload-bucket table (ADR-009).
+        $this->app['db']->connection()->getSchemaBuilder()->create('cms_editor_uploads', function (Blueprint $table) {
+            $table->id();
+            $table->string('scope')->nullable()->unique();
+            $table->timestamps();
+        });
     }
 }

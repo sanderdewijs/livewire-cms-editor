@@ -1,0 +1,24 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('cms_editor_uploads', function (Blueprint $table) {
+            $table->id();
+            // Bucket scope: the uploader's id, 'guest', 'singleton', or a custom
+            // value. One bucket per scope; unique so firstOrCreate stays light.
+            $table->string('scope')->nullable()->unique();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('cms_editor_uploads');
+    }
+};

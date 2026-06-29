@@ -10,8 +10,9 @@ use Livewire\WithPagination;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
- * WordPress-style media picker, restrained to the configured article model and
- * its editor collection (ADR-005). Also handles uploads into that collection.
+ * WordPress-style media picker over the editor collection (ADR-009): shows the
+ * shared host-owned library plus the current user's pending bucket uploads, and
+ * handles uploads into that collection.
  */
 class MediaPicker extends Component
 {
@@ -39,13 +40,30 @@ class MediaPicker extends Component
     }
 
     /**
-     * The picker query (ADR-005): media on the configured model + collection.
+     * The picker query (ADR-009): host-owned (adopted) media in the collection —
+     * a shared pool — plus the current user's not-yet-adopted bucket uploads.
      */
     public function getMediaProperty()
     {
+        $hostType = $this->modelClass ? (new $this->modelClass)->getMorphClass() : null;
+
+        $bucketModel = config('cms-editor.upload_bucket.model');
+        $bucketType = $bucketModel ? (new $bucketModel)->getMorphClass() : null;
+        $bucketId = $bucketModel ? $bucketModel::currentKey() : null;
+
         return Media::query()
-            ->where('model_type', $this->modelClass)
             ->where('collection_name', $this->collection())
+            ->where(function ($query) use ($hostType, $bucketType, $bucketId) {
+                if ($hostType) {
+                    $query->where('model_type', $hostType);
+                }
+
+                if ($bucketType && $bucketId) {
+                    $query->orWhere(fn ($q) => $q
+                        ->where('model_type', $bucketType)
+                        ->where('model_id', $bucketId));
+                }
+            })
             ->when($this->search !== '', fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
             ->latest()
             ->paginate(config('cms-editor.picker_per_page', 24));
@@ -55,9 +73,9 @@ class MediaPicker extends Component
     {
         $this->validate();
 
-        $model = $this->resolveBindingModel();
+        $owner = $this->resolveUploadOwner();
 
-        $media = $model
+        $media = $owner
             ->addMedia($this->upload->getRealPath())
             ->usingFileName($this->upload->getClientOriginalName())
             ->toMediaCollection($this->collection());
@@ -87,23 +105,20 @@ class MediaPicker extends Component
     }
 
     /**
-     * Resolve the model to attach uploads to, honouring upload_binding (ADR-005).
+     * Resolve the model uploads attach to (ADR-009). With `upload_binding=model`
+     * and a supplied instance, attach directly to it; otherwise attach to the
+     * ever-present per-user bucket and let AdoptsEditorMedia re-parent on save.
+     * Never throws — the create flow always has somewhere to put an upload.
      */
-    protected function resolveBindingModel(): Model
+    protected function resolveUploadOwner(): Model
     {
-        if ($this->model) {
+        if ($this->model && config('cms-editor.upload_binding', 'bucket') === 'model') {
             return $this->model;
         }
 
-        return match (config('cms-editor.upload_binding', 'draft')) {
-            // Host is expected to have supplied a (draft) model instance.
-            'draft', 'model' => throw new \RuntimeException(
-                'cms-editor: no model instance supplied to the picker. Pass :model to the editor, '
-                . 'or set upload_binding=temporary.'
-            ),
-            // Attach to a fresh, unsaved-but-persisted record of the model.
-            'temporary' => tap(new ($this->modelClass), fn ($m) => $m->save()),
-        };
+        $bucketModel = config('cms-editor.upload_bucket.model');
+
+        return $bucketModel::current();
     }
 
     public function render()

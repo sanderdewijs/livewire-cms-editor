@@ -1,10 +1,12 @@
 <?php
 
 use Degrinthorst\CmsEditor\Livewire\MediaPicker;
+use Degrinthorst\CmsEditor\Models\EditorUpload;
 use Degrinthorst\CmsEditor\Tests\Fixtures\Article;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 it('lists only media in the configured collection for the model', function () {
     Storage::fake('public');
@@ -18,8 +20,9 @@ it('lists only media in the configured collection for the model', function () {
         ->assertDontSee('media-' . $out->id);
 });
 
-it('uploads an image into the collection and dispatches a selection', function () {
+it('attaches directly to the model under upload_binding=model', function () {
     Storage::fake('public');
+    config()->set('cms-editor.upload_binding', 'model');
 
     $article = Article::create(['title' => 'A']);
 
@@ -30,9 +33,25 @@ it('uploads an image into the collection and dispatches a selection', function (
     expect($article->fresh()->getMedia('article_body'))->toHaveCount(1);
 });
 
-it('rejects a model-less picker upload under the default draft binding', function () {
+it('uploads without a host model by attaching to the editor bucket', function () {
     Storage::fake('public');
 
     Livewire::test(MediaPicker::class, ['model' => null])
-        ->set('upload', UploadedFile::fake()->image('orphan.jpg'));
-})->throws(RuntimeException::class);
+        ->set('upload', UploadedFile::fake()->image('fresh.jpg'))
+        ->assertDispatched('cms-editor:media-selected');
+
+    $media = Media::query()->where('collection_name', 'article_body')->sole();
+    expect($media->model_type)->toBe(EditorUpload::class);
+    expect(EditorUpload::query()->count())->toBe(1);
+});
+
+it('shows pending bucket uploads in the picker grid when creating', function () {
+    Storage::fake('public');
+
+    $component = Livewire::test(MediaPicker::class, ['model' => null])
+        ->set('upload', UploadedFile::fake()->image('pending.jpg'));
+
+    $media = Media::query()->where('collection_name', 'article_body')->sole();
+
+    $component->assertSee('media-' . $media->id);
+});

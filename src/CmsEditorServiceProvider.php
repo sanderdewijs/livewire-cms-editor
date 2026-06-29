@@ -3,6 +3,7 @@
 namespace Degrinthorst\CmsEditor;
 
 use Degrinthorst\CmsEditor\Console\InstallCommand;
+use Degrinthorst\CmsEditor\Console\PruneOrphansCommand;
 use Degrinthorst\CmsEditor\Livewire\Editor;
 use Degrinthorst\CmsEditor\Livewire\MediaPicker;
 use Illuminate\Support\ServiceProvider;
@@ -33,6 +34,7 @@ class CmsEditorServiceProvider extends ServiceProvider
 
             $this->commands([
                 InstallCommand::class,
+                PruneOrphansCommand::class,
             ]);
         }
     }
@@ -58,9 +60,17 @@ class CmsEditorServiceProvider extends ServiceProvider
             __DIR__ . '/../resources/views' => resource_path('views/vendor/cms-editor'),
         ], 'cms-editor-views');
 
-        // Pre-built JS/CSS bundle (ADR-007).
+        // Pre-built JS bundle (ADR-007) + base stylesheet. The JS is an ES
+        // module — load it with <script type="module">.
         $this->publishes([
             __DIR__ . '/../dist' => public_path('vendor/cms-editor'),
+            __DIR__ . '/../resources/css/cms-editor.css' => public_path('vendor/cms-editor/cms-editor.css'),
         ], 'cms-editor-assets');
+
+        // Upload-bucket table (ADR-009).
+        $this->publishes([
+            __DIR__ . '/../database/migrations/create_cms_editor_uploads_table.php.stub'
+                => database_path('migrations/' . date('Y_m_d_His') . '_create_cms_editor_uploads_table.php'),
+        ], 'cms-editor-migrations');
     }
 }
