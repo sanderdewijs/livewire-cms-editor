@@ -15422,9 +15422,8 @@ var iv = V.create({
 //#endregion
 //#region resources/js/editor.js
 function cv(e = {}) {
+	let t = null, n = null;
 	return {
-		editor: null,
-		_debounce: null,
 		image: {
 			active: !1,
 			width: "",
@@ -15432,17 +15431,27 @@ function cv(e = {}) {
 			align: "none",
 			style: ""
 		},
+		selectionTick: 0,
 		init() {
-			this.editor = new Md({
-				element: this.$refs.editor,
+			let e = this.$refs.editor;
+			if (e.__cmsEditor) {
+				t = e.__cmsEditor;
+				return;
+			}
+			t = new Md({
+				element: e,
 				extensions: [ov.configure({ link: { openOnClick: !1 } }), sv],
 				content: this.initialContent(),
-				onUpdate: ({ editor: e }) => this.pushToLivewire(e),
-				onSelectionUpdate: () => this.syncImagePanel()
-			}), this.$refs.editor.addEventListener("cms-editor:open-picker", () => {
+				onUpdate: ({ editor: e }) => {
+					this.pushToLivewire(e), this.selectionTick++;
+				},
+				onSelectionUpdate: () => {
+					this.syncImagePanel(), this.selectionTick++;
+				}
+			}), e.__cmsEditor = t, e.addEventListener("cms-editor:open-picker", () => {
 				this.$wire.openPicker();
 			}), this.$wire.on("cms-editor:insert-image", ({ media: e }) => {
-				this.editor.chain().focus().insertMediaImage({
+				t && t.chain().focus().insertMediaImage({
 					mediaId: e.mediaId,
 					src: e.src,
 					alt: e.alt ?? "",
@@ -15450,23 +15459,25 @@ function cv(e = {}) {
 					height: e.height ?? null
 				}).run();
 			}), this.$wire.on("cms-editor:load-document", ({ doc: e }) => {
-				this.editor.commands.setContent(e, !1);
+				t?.commands.setContent(e, !1);
 			});
 		},
 		destroy() {
-			this.editor?.destroy(), this.editor = null;
+			let e = this.$refs?.editor;
+			e && e.__cmsEditor === t && delete e.__cmsEditor, t?.destroy(), t = null;
 		},
 		initialContent() {
 			let t = this.$wire.get(e.property ?? "content");
 			return t && Object.keys(t).length ? t : "";
 		},
 		pushToLivewire(t) {
-			clearTimeout(this._debounce), this._debounce = setTimeout(() => {
+			clearTimeout(n), n = setTimeout(() => {
 				this.$wire.set(e.property ?? "content", t.getJSON());
 			}, e.debounce ?? 400);
 		},
-		cmd(e, t = {}) {
-			let n = this.editor.chain().focus();
+		cmd(e) {
+			if (!t) return;
+			let n = t.chain().focus();
 			({
 				bold: () => n.toggleBold(),
 				italic: () => n.toggleItalic(),
@@ -15484,8 +15495,8 @@ function cv(e = {}) {
 				redo: () => n.redo()
 			}[e]?.() ?? n).run();
 		},
-		isActive(e, t = {}) {
-			return this.editor?.isActive(e, t) ?? !1;
+		isActive(e, n = {}) {
+			return this.selectionTick, t?.isActive(e, n) ?? !1;
 		},
 		promptLink(e) {
 			let t = window.prompt("Link URL");
@@ -15497,10 +15508,11 @@ function cv(e = {}) {
 			right: "alignright"
 		},
 		syncImagePanel() {
-			let e = this.editor.isActive("mediaImage");
+			if (!t) return;
+			let e = t.isActive("mediaImage");
 			if (this.image.active = e, !e) return;
-			let t = this.editor.getAttributes("mediaImage");
-			this.image.width = t.width ?? "", this.image.height = t.height ?? "", this.image.style = t.style ?? "", this.image.align = this.alignFromClass(t.class);
+			let n = t.getAttributes("mediaImage");
+			this.image.width = n.width ?? "", this.image.height = n.height ?? "", this.image.style = n.style ?? "", this.image.align = this.alignFromClass(n.class);
 		},
 		alignFromClass(e) {
 			for (let [t, n] of Object.entries(this._alignClasses)) if ((e ?? "").split(/\s+/).includes(n)) return t;
@@ -15517,7 +15529,7 @@ function cv(e = {}) {
 			this.updateSelectedImage({ style: e?.trim() ? e.trim() : null });
 		},
 		updateSelectedImage(e) {
-			this.editor.chain().focus().updateMediaImage(e).run();
+			t?.chain().focus().updateMediaImage(e).run();
 		}
 	};
 }

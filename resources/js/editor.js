@@ -3,26 +3,44 @@ import StarterKit from '@tiptap/starter-kit'
 import { MediaImage } from './extensions/MediaImage.js'
 
 /**
- * Alpine component that owns the TipTap instance, registered as
- * `cmsEditor`. The mount element carries `wire:ignore` so Livewire's morphing
- * never touches the editor DOM (ADR-006).
+ * Alpine component that owns the TipTap instance, registered as `cmsEditor`.
+ *
+ * IMPORTANT: the TipTap Editor is kept in a CLOSURE variable, never on `this`.
+ * Alpine deep-proxies its reactive data, and a Proxy-wrapped editor breaks
+ * ProseMirror's object-identity checks — every command then throws
+ * "Applying a mismatched transaction". Flux keeps its editor off the reactive
+ * object for the same reason. Only plain UI state (image panel, a redraw tick)
+ * lives on `this`.
  *
  * Sync direction (ADR-006):
  *   editor -> Livewire : continuous, debounced, via $wire.set()
  *   Livewire -> editor : only on explicit external set (loadDocument event)
  */
 export default function cmsEditor(config = {}) {
-    return {
-        editor: null,
-        _debounce: null,
+    // Non-reactive instance + timer (closure-private, never proxied by Alpine).
+    let editor = null
+    let debounce = null
 
-        // Image-properties panel state (ADR-004). Mirrors the attrs of the
-        // currently-selected mediaImage node; `active` toggles the panel.
+    return {
+        // Image-properties panel state (ADR-004). Reactive — drives the panel.
         image: { active: false, width: '', height: '', align: 'none', style: '' },
 
+        // Bumped on every editor change so reactive toolbar bindings
+        // (`is-active`) re-evaluate against the latest editor state.
+        selectionTick: 0,
+
         init() {
-            this.editor = new Editor({
-                element: this.$refs.editor,
+            const el = this.$refs.editor
+
+            // Defensive: adopt an editor a previous init already mounted on this
+            // (wire:ignore'd) element instead of creating a duplicate.
+            if (el.__cmsEditor) {
+                editor = el.__cmsEditor
+                return
+            }
+
+            editor = new Editor({
+                element: el,
                 extensions: [
                     // StarterKit v3 bundles Link and Underline (both on by
                     // default); configure Link here instead of registering it
@@ -33,18 +51,26 @@ export default function cmsEditor(config = {}) {
                     MediaImage,
                 ],
                 content: this.initialContent(),
-                onUpdate: ({ editor }) => this.pushToLivewire(editor),
-                onSelectionUpdate: () => this.syncImagePanel(),
+                onUpdate: ({ editor: ed }) => {
+                    this.pushToLivewire(ed)
+                    this.selectionTick++
+                },
+                onSelectionUpdate: () => {
+                    this.syncImagePanel()
+                    this.selectionTick++
+                },
             })
+            el.__cmsEditor = editor
 
             // Open the server-side media picker.
-            this.$refs.editor.addEventListener('cms-editor:open-picker', () => {
+            el.addEventListener('cms-editor:open-picker', () => {
                 this.$wire.openPicker()
             })
 
             // Livewire -> editor: insert an image chosen in the picker.
             this.$wire.on('cms-editor:insert-image', ({ media }) => {
-                this.editor.chain().focus().insertMediaImage({
+                if (! editor) return
+                editor.chain().focus().insertMediaImage({
                     mediaId: media.mediaId,
                     src: media.src,
                     alt: media.alt ?? '',
@@ -56,14 +82,18 @@ export default function cmsEditor(config = {}) {
             // Livewire -> editor: load a document externally (e.g. record load).
             // Guarded so we never echo our own pushes back into the editor.
             this.$wire.on('cms-editor:load-document', ({ doc }) => {
-                this.editor.commands.setContent(doc, false)
+                editor?.commands.setContent(doc, false)
             })
         },
 
         destroy() {
             // Critical: avoid leaking instances across wire:navigate (ADR-006).
-            this.editor?.destroy()
-            this.editor = null
+            const el = this.$refs?.editor
+            if (el && el.__cmsEditor === editor) {
+                delete el.__cmsEditor
+            }
+            editor?.destroy()
+            editor = null
         },
 
         initialContent() {
@@ -71,16 +101,17 @@ export default function cmsEditor(config = {}) {
             return raw && Object.keys(raw).length ? raw : ''
         },
 
-        pushToLivewire(editor) {
-            clearTimeout(this._debounce)
-            this._debounce = setTimeout(() => {
-                this.$wire.set(config.property ?? 'content', editor.getJSON())
+        pushToLivewire(ed) {
+            clearTimeout(debounce)
+            debounce = setTimeout(() => {
+                this.$wire.set(config.property ?? 'content', ed.getJSON())
             }, config.debounce ?? 400)
         },
 
         // --- Toolbar helpers (bound from the Blade view) ---
-        cmd(name, attrs = {}) {
-            const chain = this.editor.chain().focus()
+        cmd(name) {
+            if (! editor) return
+            const chain = editor.chain().focus()
             const map = {
                 bold: () => chain.toggleBold(),
                 italic: () => chain.toggleItalic(),
@@ -101,7 +132,9 @@ export default function cmsEditor(config = {}) {
         },
 
         isActive(name, attrs = {}) {
-            return this.editor?.isActive(name, attrs) ?? false
+            // Touch the tick so Alpine re-runs this binding after editor changes.
+            void this.selectionTick
+            return editor?.isActive(name, attrs) ?? false
         },
 
         promptLink(chain) {
@@ -121,11 +154,12 @@ export default function cmsEditor(config = {}) {
          * only (not on attr updates), so typing in a field is never clobbered.
          */
         syncImagePanel() {
-            const active = this.editor.isActive('mediaImage')
+            if (! editor) return
+            const active = editor.isActive('mediaImage')
             this.image.active = active
             if (! active) return
 
-            const attrs = this.editor.getAttributes('mediaImage')
+            const attrs = editor.getAttributes('mediaImage')
             this.image.width = attrs.width ?? ''
             this.image.height = attrs.height ?? ''
             this.image.style = attrs.style ?? ''
@@ -157,7 +191,7 @@ export default function cmsEditor(config = {}) {
          * Update the currently-selected image's presentation attrs (ADR-004).
          */
         updateSelectedImage(attrs) {
-            this.editor.chain().focus().updateMediaImage(attrs).run()
+            editor?.chain().focus().updateMediaImage(attrs).run()
         },
     }
 }
